@@ -1,5 +1,5 @@
 {
-  "name": "elo-saude",
+  "name": "seniorWatch",
   "private": true,
   "version": "0.0.0",
   "workspaces": ["packages/*", "apps/*"],

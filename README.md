@@ -31,5 +31,5 @@ npm test
 
 ## Arquitetura
 
-Veja `docs/superpowers/specs/2026-06-02-elo-saude-design.md` e o plano em
-`docs/superpowers/plans/2026-06-02-elo-saude-triangulo.md`.
+Veja `docs/superpowers/specs/2026-06-02-seniorWatch-design.md` e o plano em
+`docs/superpowers/plans/2026-06-02-seniorWatch-triangulo.md`.

@@ -1,4 +1,4 @@
-# Elo Saúde — Design
+# seniorWatch — Design
 
 **Data:** 2026-06-02
 **Status:** Aprovado para implementação (decisões tomadas pelo agente a pedido do usuário)
