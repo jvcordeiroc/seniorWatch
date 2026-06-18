@@ -1,0 +1,12 @@
+{
+  "name": "elo-saude",
+  "private": true,
+  "version": "0.0.0",
+  "workspaces": ["packages/*", "apps/*"],
+  "scripts": {
+    "dev:server": "npm run dev -w @elo/server",
+    "dev:tutor": "npm run dev -w @elo/tutor",
+    "sim": "npm run sim -w @elo/server --",
+    "test": "npm run test -w @elo/server"
+  }
+}

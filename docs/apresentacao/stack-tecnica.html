@@ -1,0 +1,488 @@
+<!doctype html>
+<html lang="pt-BR">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+<title>Elo Saúde — Stack Técnica</title>
+<link rel="preconnect" href="https://fonts.googleapis.com" />
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+<link href="https://fonts.googleapis.com/css2?family=Archivo:wght@400;500;600;700;800&family=JetBrains+Mono:ital,wght@0,400;0,500;0,700;1,400&display=swap" rel="stylesheet" />
+<style>
+  :root {
+    --bg: #080c16;
+    --bg-2: #0a1020;
+    --surface: #0e1628;
+    --surface-2: #111c33;
+    --line: #1c2944;
+    --line-soft: #16213a;
+    --text: #e7ecf7;
+    --muted: #8492b4;
+    --faint: #46567e;
+    --blue: #5b9dff;       /* primário */
+    --blue-deep: #2f6fe0;
+    --cyan: #34d8e8;
+    --amber: #f6b73c;
+    --violet: #9d8cff;     /* só syntax */
+    --green: #5fd49a;
+    --red: #ff6b6b;
+    --sans: "Archivo", system-ui, sans-serif;
+    --mono: "JetBrains Mono", ui-monospace, monospace;
+  }
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+  html, body { height: 100%; }
+  body {
+    font-family: var(--sans); background: var(--bg); color: var(--text);
+    overflow: hidden; -webkit-font-smoothing: antialiased; position: relative;
+  }
+
+  /* grid blueprint de fundo */
+  body::before {
+    content: ""; position: fixed; inset: 0; z-index: 0; pointer-events: none;
+    background-image:
+      linear-gradient(rgba(91,157,255,.05) 1px, transparent 1px),
+      linear-gradient(90deg, rgba(91,157,255,.05) 1px, transparent 1px);
+    background-size: 46px 46px;
+    mask-image: radial-gradient(120% 100% at 70% 0, #000 35%, transparent 85%);
+  }
+  body::after {
+    content: ""; position: fixed; inset: 0; z-index: 0; pointer-events: none;
+    background:
+      radial-gradient(900px 600px at 88% -10%, rgba(52,216,232,.10), transparent 60%),
+      radial-gradient(800px 600px at 5% 110%, rgba(91,157,255,.10), transparent 60%);
+  }
+
+  /* HUD */
+  .hud { position: fixed; z-index: 30; top: 0; left: 0; right: 0;
+    display: flex; justify-content: space-between; align-items: center; padding: 20px 32px;
+    font-family: var(--mono); font-size: 12px; letter-spacing: .12em; text-transform: uppercase; color: var(--faint); }
+  .hud .brand { display: flex; align-items: center; gap: 10px; color: var(--muted); }
+  .hud .sq { width: 9px; height: 9px; border: 1.5px solid var(--blue); box-shadow: 0 0 10px rgba(91,157,255,.7);
+    animation: blink 2s steps(1) infinite; }
+  @keyframes blink { 0%,60% { opacity: 1; } 61%,100% { opacity: .25; } }
+  .hud .right { display: flex; gap: 18px; align-items: center; }
+  .hud .right .id { color: var(--blue); }
+
+  .progress { position: fixed; z-index: 30; top: 0; left: 0; height: 2px; width: 0;
+    background: linear-gradient(90deg, var(--blue-deep), var(--blue), var(--cyan));
+    box-shadow: 0 0 12px rgba(52,216,232,.6); transition: width .5s cubic-bezier(.2,.7,.2,1); }
+
+  /* crosshairs decorativos nos cantos */
+  .frame { position: fixed; inset: 64px 32px 64px; z-index: 4; pointer-events: none; }
+  .frame span { position: absolute; width: 12px; height: 12px; border: 1px solid var(--line); }
+  .frame .tl { top: 0; left: 0; border-right: 0; border-bottom: 0; }
+  .frame .tr { top: 0; right: 0; border-left: 0; border-bottom: 0; }
+  .frame .bl { bottom: 0; left: 0; border-right: 0; border-top: 0; }
+  .frame .br { bottom: 0; right: 0; border-left: 0; border-top: 0; }
+
+  /* slides */
+  .deck { position: relative; z-index: 10; height: 100%; }
+  .slide { position: absolute; inset: 0; display: flex; flex-direction: column; justify-content: center;
+    padding: 9vh clamp(36px, 8vw, 130px) 11vh; opacity: 0; visibility: hidden; pointer-events: none;
+    transition: opacity .5s ease; }
+  .slide.active { opacity: 1; visibility: visible; pointer-events: auto; }
+
+  .eyebrow { font-family: var(--mono); font-size: 12px; letter-spacing: .3em; text-transform: uppercase;
+    color: var(--cyan); margin-bottom: 18px; display: inline-flex; align-items: center; gap: 12px; }
+  .eyebrow::before { content: "▚"; color: var(--blue); letter-spacing: -.2em; }
+
+  h1 { font-family: var(--sans); font-weight: 800; font-size: clamp(52px, 9.5vw, 140px); line-height: .95;
+    letter-spacing: -.03em; }
+  h1 .g { background: linear-gradient(100deg, var(--blue), var(--cyan)); -webkit-background-clip: text;
+    background-clip: text; color: transparent; }
+  h2 { font-family: var(--sans); font-weight: 700; font-size: clamp(30px, 4.8vw, 64px); line-height: 1.04;
+    letter-spacing: -.02em; max-width: 20ch; }
+  h2 .c { color: var(--cyan); }
+  .lead { font-size: clamp(16px, 1.9vw, 21px); color: var(--muted); line-height: 1.55; max-width: 60ch; margin-top: 22px; }
+  .lead strong { color: var(--text); font-weight: 600; }
+
+  .slide.active [data-anim] { animation: rise .65s cubic-bezier(.2,.75,.2,1) both; animation-delay: calc(var(--d,0)*1ms); }
+  [data-anim] { opacity: 0; }
+  @keyframes rise { from { opacity: 0; transform: translateY(18px); } to { opacity: 1; transform: none; } }
+
+  /* capa */
+  .cover .meta { font-family: var(--mono); font-size: 13px; color: var(--muted); margin-top: 30px; letter-spacing: .04em; }
+  .cover .meta span { color: var(--cyan); }
+  .cover .tag { font-size: clamp(17px,2vw,22px); color: var(--muted); margin-top: 18px; max-width: 44ch; }
+
+  /* diagrama de componentes */
+  .arch { display: grid; grid-template-columns: 1fr auto 1fr auto 1fr; align-items: center; gap: clamp(6px,1.4vw,18px);
+    margin-top: 46px; }
+  .box { background: var(--surface); border: 1px solid var(--line); border-radius: 12px; padding: 22px 20px; position: relative; }
+  .box .k { font-family: var(--mono); font-size: 10.5px; letter-spacing: .14em; text-transform: uppercase; color: var(--faint); }
+  .box h3 { font-family: var(--sans); font-weight: 700; font-size: clamp(18px,2vw,24px); margin: 8px 0 6px; }
+  .box p { color: var(--muted); font-size: 13.5px; line-height: 1.45; }
+  .box.accent { border-color: rgba(91,157,255,.5); box-shadow: 0 0 0 1px rgba(91,157,255,.15), 0 12px 40px -20px rgba(91,157,255,.5); }
+  .link { display: flex; flex-direction: column; align-items: center; gap: 6px; }
+  .link .proto { font-family: var(--mono); font-size: 10px; letter-spacing: .1em; color: var(--cyan); white-space: nowrap; }
+  .link .ln { width: clamp(28px,4vw,68px); height: 0; border-top: 2px dashed var(--blue); position: relative; }
+  .link .ln::after { content: "▸"; position: absolute; right: -8px; top: -10px; color: var(--blue); }
+  .arch .db { grid-column: 3; justify-self: center; margin-top: 16px; font-family: var(--mono); font-size: 12px;
+    color: var(--muted); border: 1px dashed var(--line); border-radius: 8px; padding: 8px 14px; }
+  .arch .db b { color: var(--cyan); }
+  .archnote { grid-column: 1 / -1; margin-top: 30px; color: var(--muted); font-size: 15.5px; line-height: 1.55;
+    border-left: 2px solid var(--cyan); padding-left: 18px; max-width: 80ch; }
+  .archnote b { color: var(--text); }
+
+  /* tabela de camadas */
+  .layers { margin-top: 40px; display: grid; gap: 10px; }
+  .layer { display: grid; grid-template-columns: 150px 200px 1fr; align-items: center; gap: 20px;
+    background: var(--surface); border: 1px solid var(--line-soft); border-radius: 10px; padding: 15px 20px; }
+  .layer .l { font-family: var(--mono); font-size: 11px; letter-spacing: .12em; text-transform: uppercase; color: var(--faint); }
+  .layer .t { font-family: var(--mono); font-size: 15px; color: var(--blue); font-weight: 500; }
+  .layer .w { color: var(--muted); font-size: 14.5px; line-height: 1.4; }
+  .layer .w b { color: var(--text); }
+
+  /* árvore de pastas */
+  .tree { font-family: var(--mono); font-size: clamp(12px, 1.35vw, 15px); line-height: 1.7; margin-top: 36px;
+    background: var(--surface); border: 1px solid var(--line); border-radius: 14px; padding: 26px 30px; color: var(--muted);
+    overflow: auto; }
+  .tree .d { color: var(--blue); }
+  .tree .f { color: var(--text); }
+  .tree .c { color: var(--faint); }
+  .tree .star { color: var(--amber); }
+
+  /* code */
+  .code { font-family: var(--mono); font-size: clamp(12.5px, 1.4vw, 16px); line-height: 1.65; margin-top: 32px;
+    background: linear-gradient(180deg, var(--surface), var(--bg-2)); border: 1px solid var(--line); border-radius: 14px;
+    padding: 26px 30px; overflow: auto; position: relative; }
+  .code .bar { position: absolute; top: 14px; right: 18px; font-size: 11px; color: var(--faint); letter-spacing: .1em; }
+  .code .dots { position: absolute; top: 16px; left: 18px; display: flex; gap: 7px; }
+  .code .dots i { width: 11px; height: 11px; border-radius: 50%; display: inline-block; }
+  .code .dots i:nth-child(1){background:#ff5f57}.code .dots i:nth-child(2){background:#febc2e}.code .dots i:nth-child(3){background:#28c840}
+  .code pre { margin-top: 22px; white-space: pre; }
+  .k { color: var(--violet); } .ty { color: var(--cyan); } .s { color: var(--amber); }
+  .cm { color: var(--faint); font-style: italic; } .pr { color: var(--text); } .fn { color: var(--blue); } .nu { color: var(--green); }
+
+  /* módulos do backend */
+  .mods { margin-top: 38px; display: grid; grid-template-columns: repeat(2, 1fr); gap: 14px; }
+  .mod { background: var(--surface); border: 1px solid var(--line); border-radius: 12px; padding: 18px 22px;
+    display: flex; gap: 16px; align-items: baseline; }
+  .mod .nm { font-family: var(--mono); font-size: 14.5px; color: var(--blue); white-space: nowrap; font-weight: 500; }
+  .mod .ds { color: var(--muted); font-size: 14px; line-height: 1.45; }
+  .mod .ds b { color: var(--text); }
+
+  /* sequência tempo real */
+  .seq { margin-top: 40px; display: flex; flex-wrap: wrap; align-items: center; gap: 10px; }
+  .seq .s { font-family: var(--mono); font-size: 14px; padding: 12px 16px; border-radius: 10px; background: var(--surface);
+    border: 1px solid var(--line); color: var(--text); }
+  .seq .s small { color: var(--faint); display: block; font-size: 10.5px; letter-spacing: .08em; text-transform: uppercase; }
+  .seq .ar { color: var(--blue); font-family: var(--mono); }
+
+  /* decisões */
+  .decs { margin-top: 36px; display: grid; gap: 14px; }
+  .dec { display: grid; grid-template-columns: 40px 1fr; gap: 18px; background: var(--surface);
+    border: 1px solid var(--line-soft); border-radius: 12px; padding: 18px 22px; }
+  .dec .no { font-family: var(--mono); color: var(--cyan); font-size: 20px; font-weight: 700; }
+  .dec h4 { font-family: var(--sans); font-weight: 700; font-size: 19px; margin-bottom: 4px; }
+  .dec p { color: var(--muted); font-size: 14.5px; line-height: 1.5; }
+  .dec p code { font-family: var(--mono); color: var(--amber); font-size: 13px; }
+
+  /* qualidade */
+  .pyr { margin-top: 40px; display: grid; grid-template-columns: repeat(3, 1fr); gap: 16px; }
+  .tier { background: var(--surface); border: 1px solid var(--line); border-radius: 14px; padding: 24px; }
+  .tier .lv { font-family: var(--mono); font-size: 11px; letter-spacing: .14em; text-transform: uppercase; color: var(--cyan); }
+  .tier h4 { font-family: var(--sans); font-weight: 700; font-size: 21px; margin: 8px 0 10px; }
+  .tier p { color: var(--muted); font-size: 14px; line-height: 1.5; }
+  .qstat { margin-top: 30px; display: flex; gap: 14px; flex-wrap: wrap; }
+  .qstat span { font-family: var(--mono); font-size: 14px; padding: 11px 18px; border-radius: 999px;
+    border: 1px solid var(--line); background: var(--surface); color: var(--text); }
+  .qstat span b { color: var(--green); }
+
+  /* fechamento / run */
+  .runrepo { margin-top: 30px; font-family: var(--mono); font-size: clamp(14px,1.6vw,18px); color: var(--cyan);
+    display: inline-flex; gap: 10px; align-items: center; border: 1px solid var(--line); background: var(--surface);
+    padding: 13px 20px; border-radius: 10px; }
+
+  /* controles */
+  .ctrl { position: fixed; z-index: 30; bottom: 20px; right: 28px; display: flex; gap: 10px; }
+  .ctrl button { font-family: var(--mono); font-size: 16px; width: 38px; height: 38px; border-radius: 9px;
+    border: 1px solid var(--line); background: var(--surface); color: var(--muted); cursor: pointer; transition: .2s; }
+  .ctrl button:hover { color: var(--blue); border-color: var(--blue); }
+  .hint { position: fixed; z-index: 30; bottom: 28px; left: 30px; font-family: var(--mono); font-size: 11px;
+    letter-spacing: .1em; text-transform: uppercase; color: var(--faint); }
+  .hint b { color: var(--muted); }
+
+  .notes { position: fixed; z-index: 40; inset: auto 0 0 0; transform: translateY(100%);
+    transition: transform .35s cubic-bezier(.2,.7,.2,1); background: rgba(8,12,22,.97);
+    border-top: 1px solid var(--blue); padding: 22px 34px 26px; backdrop-filter: blur(8px); }
+  .notes.show { transform: none; }
+  .notes .nh { font-family: var(--mono); font-size: 11px; letter-spacing: .2em; text-transform: uppercase; color: var(--blue); margin-bottom: 8px; }
+  .notes p { color: var(--text); font-size: 15.5px; line-height: 1.55; max-width: 95ch; }
+
+  @media (max-width: 900px) {
+    .arch { grid-template-columns: 1fr; }
+    .link { flex-direction: row; padding: 4px 0; }
+    .link .ln { width: 0; height: 26px; border-top: 0; border-left: 2px dashed var(--blue); }
+    .link .ln::after { content: "▾"; right: -7px; top: auto; bottom: -12px; }
+    .arch .db { grid-column: 1; }
+    .layer { grid-template-columns: 1fr; gap: 6px; }
+    .mods, .pyr { grid-template-columns: 1fr; }
+  }
+</style>
+</head>
+<body>
+
+<div class="progress" id="progress"></div>
+<div class="hud">
+  <div class="brand"><span class="sq"></span> Elo Saúde · Stack Técnica</div>
+  <div class="right"><span id="counter">01 / 10</span> <span class="id">v0.1 · Fase 1</span></div>
+</div>
+<div class="frame"><span class="tl"></span><span class="tr"></span><span class="bl"></span><span class="br"></span></div>
+
+<div class="deck" id="deck">
+
+  <!-- 1 CAPA -->
+  <section class="slide cover">
+    <div class="eyebrow" data-anim>Arquitetura &amp; Engenharia</div>
+    <h1 data-anim style="--d:140">Stack <span class="g">Técnica</span></h1>
+    <div class="tag" data-anim style="--d:320">Como o Elo Saúde é construído por dentro — runtime, protocolos, dados e qualidade.</div>
+    <div class="meta" data-anim style="--d:460">Node 25 · TypeScript · <span>Fastify</span> · WebSocket · <span>node:sqlite</span> · React · Vite · Vitest</div>
+  </section>
+
+  <!-- 2 ARQUITETURA -->
+  <section class="slide">
+    <div class="eyebrow" data-anim>Visão geral</div>
+    <h2 data-anim style="--d:120">Um pipeline de telemetria <span class="c">em tempo real</span></h2>
+    <div class="arch">
+      <div class="box" data-anim style="--d:280"><div class="k">Origem</div><h3>⌚ Relógio / Simulador</h3><p>Coleta sinais vitais e envia leituras</p></div>
+      <div class="link" data-anim style="--d:360"><span class="proto">HTTP · POST /v1/telemetry</span><span class="ln"></span></div>
+      <div class="box accent" data-anim style="--d:440"><div class="k">Núcleo</div><h3>☁️ Backend</h3><p>Fastify · valida, persiste, avalia regras</p></div>
+      <div class="link" data-anim style="--d:520"><span class="proto">WS · /v1/stream</span><span class="ln"></span></div>
+      <div class="box" data-anim style="--d:600"><div class="k">Consumo</div><h3>📱 App do Tutor</h3><p>React · painel e alertas ao vivo</p></div>
+      <div class="db" data-anim style="--d:680">💾 <b>node:sqlite</b> — histórico persistido no backend</div>
+      <div class="archnote" data-anim style="--d:780">
+        Dois protocolos com papéis distintos: <b>HTTP</b> para a ingestão (request/response simples) e
+        <b>WebSocket</b> para a distribuição (push contínuo de telemetria e alertas ao tutor).
+      </div>
+    </div>
+  </section>
+
+  <!-- 3 STACK EM CAMADAS -->
+  <section class="slide">
+    <div class="eyebrow" data-anim>A stack</div>
+    <h2 data-anim style="--d:120">Cada camada — e <span class="c">por quê</span></h2>
+    <div class="layers">
+      <div class="layer" data-anim style="--d:240"><div class="l">Runtime</div><div class="t">Node 25 + TS (tsx)</div><div class="w">TypeScript executado <b>direto</b>, sem etapa de build em dev</div></div>
+      <div class="layer" data-anim style="--d:310"><div class="l">HTTP</div><div class="t">Fastify 5</div><div class="w">Servidor <b>rápido e tipado</b>, com validação e <code>inject</code> para testes</div></div>
+      <div class="layer" data-anim style="--d:380"><div class="l">Tempo real</div><div class="t">@fastify/websocket</div><div class="w">Push de telemetria e alertas por <b>WebSocket</b></div></div>
+      <div class="layer" data-anim style="--d:450"><div class="l">Persistência</div><div class="t">node:sqlite</div><div class="w">SQLite <b>nativo do Node</b> — zero dependência nativa de terceiros</div></div>
+      <div class="layer" data-anim style="--d:520"><div class="l">Validação</div><div class="t">Zod</div><div class="w">Valida o payload <b>na borda</b> antes de qualquer gravação</div></div>
+      <div class="layer" data-anim style="--d:590"><div class="l">Frontend</div><div class="t">React 18 + Vite 6</div><div class="w">HMR instantâneo, <b>mobile-first</b>, proxy de API/WS em dev</div></div>
+      <div class="layer" data-anim style="--d:660"><div class="l">Testes</div><div class="t">Vitest</div><div class="w">Mesmo ecossistema do Vite — unit, integração e e2e</div></div>
+    </div>
+  </section>
+
+  <!-- 4 MONOREPO -->
+  <section class="slide">
+    <div class="eyebrow" data-anim>Organização</div>
+    <h2 data-anim style="--d:120">Monorepo com <span class="c">fronteiras claras</span></h2>
+    <pre class="tree" data-anim style="--d:280"><span class="d">elo-saude/</span>            <span class="c"># npm workspaces</span>
+├─ <span class="d">packages/server/</span>      <span class="c">@elo/server</span>
+│  └─ <span class="d">src/</span>
+│     ├─ <span class="f">contracts.ts</span>     <span class="star">←</span> <span class="c">fonte da verdade (tipos)</span>
+│     ├─ <span class="f">alert-engine.ts</span>  <span class="c">motor de alertas (puro)</span>
+│     ├─ <span class="f">telemetry-store.ts</span> <span class="c">node:sqlite</span>
+│     ├─ <span class="f">realtime-hub.ts</span>  <span class="c">broadcast WebSocket</span>
+│     ├─ <span class="f">validation.ts</span>    <span class="c">Zod</span>
+│     ├─ <span class="f">server.ts</span>        <span class="c">fábrica do Fastify</span>
+│     └─ <span class="f">simulator.ts</span>     <span class="c">relógio simulado (CLI)</span>
+└─ <span class="d">apps/tutor/</span>           <span class="c">@elo/tutor — React + Vite</span>
+   └─ <span class="d">src/</span>
+      ├─ <span class="f">contracts.ts</span>     <span class="star">←</span> <span class="c">espelho do contrato</span>
+      ├─ <span class="f">useStream.ts</span>     <span class="c">hook do WebSocket</span>
+      └─ <span class="d">components/</span>      <span class="c">DeviceCard · AlertFeed</span></pre>
+    <p class="lead" data-anim style="--d:420">O <strong>server</strong> é a fonte da verdade dos contratos; o tutor mantém um <strong>espelho</strong> na fronteira de rede — uma duplicação consciente que desacopla o build do frontend do backend.</p>
+  </section>
+
+  <!-- 5 CONTRATO -->
+  <section class="slide">
+    <div class="eyebrow" data-anim>A interface</div>
+    <h2 data-anim style="--d:120">Os contratos <span class="c">congelam tudo</span></h2>
+    <div class="code" data-anim style="--d:300">
+      <div class="dots"><i></i><i></i><i></i></div><div class="bar">contracts.ts</div>
+<pre><span class="k">interface</span> <span class="ty">Telemetry</span> {
+  <span class="pr">deviceId</span>: <span class="ty">string</span>;
+  <span class="pr">timestamp</span>: <span class="ty">string</span>;        <span class="cm">// ISO-8601</span>
+  <span class="pr">heartRate</span>: <span class="ty">number</span>;        <span class="cm">// BPM</span>
+  <span class="pr">spo2</span>: <span class="ty">number</span>;             <span class="cm">// saturação de O₂</span>
+  <span class="pr">battery</span>: <span class="ty">number</span>;
+  <span class="pr">location</span>: { <span class="pr">lat</span>: <span class="ty">number</span>; <span class="pr">lng</span>: <span class="ty">number</span>; <span class="pr">accuracy</span>: <span class="ty">number</span> };
+  <span class="pr">fallDetected</span>: <span class="ty">boolean</span>;
+}
+
+<span class="k">type</span> <span class="ty">AlertType</span> = <span class="s">'fall'</span> | <span class="s">'high_hr'</span> | <span class="s">'low_hr'</span> | <span class="s">'low_battery'</span> | <span class="s">'offline'</span>;
+
+<span class="cm">// é exatamente isto que o tutor recebe pelo WebSocket:</span>
+<span class="k">type</span> <span class="ty">StreamEvent</span> = <span class="ty">TelemetryEvent</span> | <span class="ty">AlertEvent</span>;</pre>
+    </div>
+    <p class="lead" data-anim style="--d:460">É este contrato que o <strong>relógio nativo</strong> vai implementar na Fase 2 — sem tocar no backend nem no app.</p>
+  </section>
+
+  <!-- 6 BACKEND POR DENTRO -->
+  <section class="slide">
+    <div class="eyebrow" data-anim>Backend</div>
+    <h2 data-anim style="--d:120">Unidades pequenas e <span class="c">testáveis</span></h2>
+    <div class="mods">
+      <div class="mod" data-anim style="--d:280"><div class="nm">alert-engine</div><div class="ds">Função <b>pura</b>: recebe uma leitura, devolve alertas. Cooldown anti-spam, sem I/O.</div></div>
+      <div class="mod" data-anim style="--d:350"><div class="nm">telemetry-store</div><div class="ds">Persistência e consulta em <b>node:sqlite</b> (histórico, último, lastSeen).</div></div>
+      <div class="mod" data-anim style="--d:420"><div class="nm">realtime-hub</div><div class="ds">Gerencia conexões WS e faz <b>broadcast</b> de telemetria e alertas.</div></div>
+      <div class="mod" data-anim style="--d:490"><div class="nm">validation</div><div class="ds">Schema <b>Zod</b>; rejeita payload inválido com 400 antes de persistir.</div></div>
+      <div class="mod" data-anim style="--d:560"><div class="nm">server</div><div class="ds">Fábrica do <b>Fastify</b>: rotas REST + endpoint WebSocket, injetável em teste.</div></div>
+      <div class="mod" data-anim style="--d:630"><div class="nm">index</div><div class="ds">Bootstrap + verificador <b>periódico de offline</b>.</div></div>
+    </div>
+  </section>
+
+  <!-- 7 TEMPO REAL -->
+  <section class="slide">
+    <div class="eyebrow" data-anim>Fluxo em tempo real</div>
+    <h2 data-anim style="--d:120">Do <span class="c">POST</span> ao <span class="c">broadcast</span></h2>
+    <div class="seq">
+      <div class="s" data-anim style="--d:260"><small>entra</small>POST /v1/telemetry</div>
+      <span class="ar" data-anim style="--d:300">→</span>
+      <div class="s" data-anim style="--d:340"><small>borda</small>valida (Zod)</div>
+      <span class="ar" data-anim style="--d:380">→</span>
+      <div class="s" data-anim style="--d:420"><small>grava</small>store.insert</div>
+      <span class="ar" data-anim style="--d:460">→</span>
+      <div class="s" data-anim style="--d:500"><small>decide</small>engine.evaluate</div>
+      <span class="ar" data-anim style="--d:540">→</span>
+      <div class="s" data-anim style="--d:580"><small>empurra</small>hub.broadcast</div>
+      <span class="ar" data-anim style="--d:620">→</span>
+      <div class="s" data-anim style="--d:660"><small>recebe</small>clientes WS</div>
+    </div>
+    <div class="code" data-anim style="--d:760">
+      <div class="dots"><i></i><i></i><i></i></div><div class="bar">server.ts</div>
+<pre><span class="fn">app</span>.<span class="fn">post</span>(<span class="s">'/v1/telemetry'</span>, <span class="k">async</span> (req, reply) => {
+  <span class="k">const</span> t = <span class="fn">parseTelemetry</span>(req.body);          <span class="cm">// Zod</span>
+  store.<span class="fn">insert</span>(t);
+  hub.<span class="fn">broadcast</span>({ <span class="pr">type</span>: <span class="s">'telemetry'</span>, <span class="pr">data</span>: t });
+  <span class="k">for</span> (<span class="k">const</span> a <span class="k">of</span> engine.<span class="fn">evaluate</span>(t, <span class="fn">Date.now</span>())) hub.<span class="fn">broadcast</span>(a);
+});</pre>
+    </div>
+    <p class="lead" data-anim style="--d:900">Em dev, o <strong>Vite faz proxy</strong> de <code style="font-family:var(--mono);color:var(--amber)">/v1</code> (incluindo o upgrade do WebSocket) para o backend — o navegador fala numa porta só.</p>
+  </section>
+
+  <!-- 8 DECISÕES -->
+  <section class="slide">
+    <div class="eyebrow" data-anim>Decisões técnicas</div>
+    <h2 data-anim style="--d:120">Escolhas que <span class="c">valem explicar</span></h2>
+    <div class="decs">
+      <div class="dec" data-anim style="--d:260"><div class="no">1</div><div>
+        <h4>node:sqlite via <code>process.getBuiltinModule</code></h4>
+        <p>O módulo é experimental e não consta em <code>builtinModules</code> sem o prefixo, o que quebra o bundler (Vitest/Vite). Carregá-lo em runtime o torna <b style="color:var(--text)">invisível ao empacotador</b>; os tipos vêm de um <code>import type</code>.</p></div></div>
+      <div class="dec" data-anim style="--d:350"><div class="no">2</div><div>
+        <h4>Zero dependências nativas</h4>
+        <p>SQLite, <code>fetch</code> e <code>WebSocket</code> são todos <b style="color:var(--text)">nativos do Node 25</b> — instalação simples, sem compilação de binários.</p></div></div>
+      <div class="dec" data-anim style="--d:440"><div class="no">3</div><div>
+        <h4>Contratos espelhados na fronteira</h4>
+        <p>Duplicar os tipos type-only entre server e tutor <b style="color:var(--text)">desacopla o build</b> do frontend do backend — o trade-off é manter os dois em sincronia.</p></div></div>
+      <div class="dec" data-anim style="--d:530"><div class="no">4</div><div>
+        <h4>Motor de alertas como função pura</h4>
+        <p>Sem I/O: a lógica de regras e cooldown é <b style="color:var(--text)">testável exaustivamente</b> sem subir servidor nem banco.</p></div></div>
+    </div>
+  </section>
+
+  <!-- 9 QUALIDADE -->
+  <section class="slide">
+    <div class="eyebrow" data-anim>Qualidade</div>
+    <h2 data-anim style="--d:120">Testado em <span class="c">três níveis</span></h2>
+    <div class="pyr">
+      <div class="tier" data-anim style="--d:280"><div class="lv">Nível 1 · Unitário</div><h4>Lógica isolada</h4><p>Motor de alertas, store, hub e validação — rápidos, determinísticos, sem rede.</p></div>
+      <div class="tier" data-anim style="--d:400"><div class="lv">Nível 2 · Integração</div><h4>A API de verdade</h4><p>Rotas testadas com <code style="font-family:var(--mono);color:var(--amber)">app.inject</code>: payload válido/ inválido, 202/400/404.</p></div>
+      <div class="tier" data-anim style="--d:520"><div class="lv">Nível 3 · End-to-end</div><h4>O fluxo completo</h4><p>Servidor real + cliente <b>WebSocket</b>: a queda entra e o alerta chega ao cliente.</p></div>
+    </div>
+    <div class="qstat">
+      <span data-anim style="--d:640"><b>29</b> testes passando</span>
+      <span data-anim style="--d:700"><b>✓</b> type-check limpo (server + tutor)</span>
+      <span data-anim style="--d:760"><b>✓</b> build de produção OK</span>
+    </div>
+  </section>
+
+  <!-- 10 RODANDO -->
+  <section class="slide">
+    <div class="eyebrow" data-anim>Mãos à obra</div>
+    <h2 data-anim style="--d:120">Rodando <span class="c">localmente</span></h2>
+    <div class="code" data-anim style="--d:300">
+      <div class="dots"><i></i><i></i><i></i></div><div class="bar">terminal</div>
+<pre><span class="cm"># 1 · instalar (um install para o monorepo inteiro)</span>
+<span class="fn">npm</span> install
+
+<span class="cm"># 2 · backend  ·  3 · relógio simulado  ·  4 · painel do tutor</span>
+<span class="fn">npm</span> run dev:server
+<span class="fn">npm</span> run sim -w @elo/server -- <span class="s">--scenario=fall</span>
+<span class="fn">npm</span> run dev:tutor        <span class="cm"># http://localhost:5173</span>
+
+<span class="cm"># testes</span>
+<span class="fn">npm</span> test                  <span class="cm"># 29 passando</span></pre>
+    </div>
+    <div class="runrepo" data-anim style="--d:480">🔒 github.com/Warleypablo/elo-saude</div>
+    <p class="lead" data-anim style="--d:580">Próxima fase técnica: <strong>relógio nativo</strong> implementando o contrato de telemetria.</p>
+  </section>
+
+</div>
+
+<div class="hint">← → <b>navegar</b> &nbsp;·&nbsp; N <b>notas</b> &nbsp;·&nbsp; F <b>tela cheia</b></div>
+<div class="ctrl">
+  <button id="prev" aria-label="anterior">‹</button>
+  <button id="next" aria-label="próximo">›</button>
+  <button id="notesBtn" aria-label="notas">N</button>
+</div>
+<div class="notes" id="notes">
+  <div class="nh">Nota do apresentador</div>
+  <p id="notesText"></p>
+</div>
+
+<script>
+  const NOTES = [
+    "Abertura técnica. “Vou mostrar como o Elo Saúde é construído por dentro: runtime, protocolos, dados e como garantimos qualidade.”",
+    "Arquitetura. É um pipeline de telemetria. Repare nos dois protocolos: HTTP para a entrada de dados, WebSocket para empurrar tudo ao vivo para o tutor. O SQLite guarda o histórico no backend.",
+    "Stack em camadas. Para cada escolha há um porquê. Destaques: TypeScript roda direto via tsx; persistência usa o SQLite nativo do Node, sem dependência nativa de terceiros.",
+    "Monorepo. Dois pacotes com responsabilidades claras via npm workspaces. O server é a fonte da verdade dos contratos; o tutor mantém um espelho na fronteira de rede.",
+    "Contrato de dados. Esta interface é o coração: define o que o relógio envia e o que o tutor recebe. Congelá-la é o que permite trocar o simulador pelo relógio real depois.",
+    "Backend por dentro. Cada arquivo tem uma responsabilidade. O motor de alertas é função pura — fácil de testar. Store, hub e validação são isolados.",
+    "Tempo real. O caminho de uma leitura: entra por POST, valida, grava, avalia regras e faz broadcast. Em dev, o Vite faz proxy para o navegador falar numa porta só.",
+    "Decisões. A mais interessante: node:sqlite é experimental e quebrava o bundler; resolvemos carregando-o em runtime, fora do alcance do empacotador. E tudo com zero deps nativas.",
+    "Qualidade. Testes em três níveis: unitário, integração e end-to-end com WebSocket real. 29 testes, tipos limpos e build OK.",
+    "Como rodar. Um install para o monorepo, três comandos para subir tudo, e npm test. Código no repositório. Próximo passo técnico: o relógio nativo. Perguntas?"
+  ];
+
+  const slides = Array.from(document.querySelectorAll(".slide"));
+  const total = slides.length;
+  let i = 0;
+  const progress = document.getElementById("progress");
+  const counter = document.getElementById("counter");
+  const notes = document.getElementById("notes");
+  const notesText = document.getElementById("notesText");
+  const pad = (n) => String(n).padStart(2, "0");
+
+  function show(n) {
+    i = Math.max(0, Math.min(total - 1, n));
+    slides.forEach((s, k) => s.classList.toggle("active", k === i));
+    progress.style.width = (i / (total - 1) * 100) + "%";
+    counter.textContent = pad(i + 1) + " / " + pad(total);
+    notesText.textContent = NOTES[i] || "";
+  }
+  const next = () => show(i + 1);
+  const prev = () => show(i - 1);
+
+  document.getElementById("next").onclick = next;
+  document.getElementById("prev").onclick = prev;
+  document.getElementById("notesBtn").onclick = () => notes.classList.toggle("show");
+  document.addEventListener("keydown", (e) => {
+    if (e.key === "ArrowRight" || e.key === " " || e.key === "PageDown") { e.preventDefault(); next(); }
+    else if (e.key === "ArrowLeft" || e.key === "PageUp") { e.preventDefault(); prev(); }
+    else if (e.key === "Home") show(0);
+    else if (e.key === "End") show(total - 1);
+    else if (e.key.toLowerCase() === "n") notes.classList.toggle("show");
+    else if (e.key.toLowerCase() === "f") {
+      if (!document.fullscreenElement) document.documentElement.requestFullscreen?.();
+      else document.exitFullscreen?.();
+    }
+  });
+  document.getElementById("deck").addEventListener("click", (e) => {
+    if (e.target.closest("a,button,pre,code")) return;
+    (e.clientX > window.innerWidth / 2) ? next() : prev();
+  });
+  show(0);
+</script>
+</body>
+</html>
